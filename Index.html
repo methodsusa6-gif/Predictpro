@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PredictPro</title>
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- CSS Styles -->
+    <style>
+        /* Animated Gradient Background for index.html */
+        .animated-gradient {
+            background: linear-gradient(-45deg, #232526, #414345, #232526, #414345);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        
+        /* Custom Button Gradients */
+        .btn-grad {
+            background-image: linear-gradient(to right, #6366F1 0%, #A855F7 50%, #EC4899 100%);
+            background-size: 200% auto;
+            transition: all 0.3s ease;
+        }
+        .btn-grad:hover { background-position: right center; box-shadow: 0 0 20px rgba(168, 85, 247, 0.5); }
+        
+        .btn-grad-green {
+            background-image: linear-gradient(to right, #10B981 0%, #34D399 50%, #6EE7B7 100%);
+            background-size: 200% auto;
+            transition: all 0.3s ease;
+        }
+        .btn-grad-green:hover { background-position: right center; box-shadow: 0 0 20px rgba(16, 185, 129, 0.5); }
+        
+        /* Card Style */
+        .card { @apply bg-gray-800 bg-opacity-70 backdrop-blur-md p-6 rounded-xl shadow-lg; }
+        .card-title { @apply text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2; }
+        
+        /* Admin Tab Styles */
+        .admin-tab { @apply whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-400 hover:text-white hover:border-purple-400; }
+        .admin-tab.active { @apply border-purple-500 text-purple-400; }
+        
+        /* Input Field */
+        .input-field { @apply w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500; }
+        
+        /* Toast Notification */
+        .toast { @apply p-4 rounded-lg shadow-xl text-white font-semibold transition-all duration-300 transform; animation: slideIn 0.5s ease-out, fadeOut 0.5s ease-in 3.5s forwards; }
+        .toast-success { @apply bg-green-600; }
+        .toast-error { @apply bg-red-600; }
+        .toast-info { @apply bg-blue-600; }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-100px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateY(20px); } }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+
+    <!-- 
+      This is the main container. 
+      JavaScript will hide/show the correct page div based on auth.
+    -->
+
+    <!-- =================================================================== -->
+    <!-- LOGIN PAGE                                                          -->
+    <!-- =================================================================== -->
+    <div id="login-page" class="hidden min-h-screen flex items-center justify-center animated-gradient">
+        <div class="w-full max-w-md p-8 bg-gray-800 rounded-2xl shadow-2xl backdrop-blur-md bg-opacity-70">
+
+            <h2 class="text-4xl font-bold text-center mb-2">🎯 PredictPro</h2>
+            <p class="text-center text-gray-300 mb-8">Login or Sign Up</p>
+
+            <!-- Step 1: Request OTP -->
+            <form id="request-otp-form">
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-gray-200 mb-2">Email Address</label>
+                    <input type="email" id="email" name="email" required
+                           class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                           placeholder="you@example.com">
+                </div>
+                <button type="submit" id="request-otp-btn"
+                        class="w-full text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 btn-grad">
+                    Send Login Code
+                </button>
+            </form>
+
+            <!-- Step 2: Verify OTP -->
+            <form id="verify-otp-form" class="hidden">
+                <p class="text-center text-gray-300 mb-4">
+                    We sent a 6-digit code to <strong id="user-email-display"></strong>.
+                </p>
+                <div class="mb-4">
+                    <label for="otp" class="block text-sm font-medium text-gray-200 mb-2">Enter OTP</label>
+                    <input type="text" id="otp" name="otp" required
+                           class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-center text-2xl tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-purple-500"
+                           placeholder="_ _ _ _ _ _" maxlength="6">
+                </div>
+                <button type="submit" id="verify-otp-btn"
+                        class="w-full text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 btn-grad">
+                    Login / Verify
+                </button>
+                <button type="button" id="resend-otp-btn" class="w-full text-center text-purple-300 mt-4 text-sm">
+                    Resend Code
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- USER DASHBOARD PAGE                                                 -->
+    <!-- =================================================================== -->
+    <div id="dashboard-page" class="hidden">
+        <!-- Header -->
+        <nav class="bg-gray-800 bg-opacity-70 backdrop-blur-md shadow-lg p-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">🎯 PredictPro</h1>
+            <div>
+                <span id="dash-user-email" class="mr-4 text-gray-300"></span>
+                <button class="logout-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-all">
+                    Logout
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="container mx-auto p-4 md:p-8">
+
+            <!-- Ban/Expiry Notifications -->
+            <div id="ban-notification" class="hidden bg-red-800 text-white p-4 rounded-lg mb-6 shadow-lg">
+                <h3 class="font-bold text-lg">⚠️ Account Suspended</h3>
+                <p id="ban-reason">You have been banned.</p>
+                <p>Time remaining: <strong id="ban-countdown" class="text-lg"></strong></p>
+            </div>
+
+            <div id="premium-notification" class="hidden bg-green-700 text-white p-4 rounded-lg mb-6 shadow-lg">
+                <h3 class="font-bold text-lg">⭐ Premium Active</h3>
+                <p>Your <strong id="premium-plan-name"></strong> plan expires in: <strong id="premium-countdown" class="text-lg"></strong></p>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <!-- Column 1: Profile & Referrals -->
+                <div class="md:col-span-1 space-y-6">
+                    <!-- Profile Card -->
+                    <div class="card">
+                        <h3 class="card-title">Profile</h3>
+                        <p>Status: <span id="user-status" class="font-bold text-green-400">Active</span></p>
+                        <p>Role: <span id="user-role" class="font-bold text-purple-300">User</span></p>
+                        <p>Premium: <span id="premium-status" class="font-bold text-yellow-400">None</span></p>
+                        <button class="w-full mt-4 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 btn-grad-green">
+                            Upgrade to Premium
+                        </button>
+                    </div>
+
+                    <!-- Referral Card -->
+                    <div class="card">
+                        <h3 class="card-title">Referral Program</h3>
+                        <p>Your Points: <strong id="referral-points" class="text-2xl text-yellow-300">0</strong></p>
+                        <p class="text-sm text-gray-300 mt-2">Get +1 point for each friend who signs up. 5 points = 1 week free premium!</p>
+                        <label class="block text-sm font-medium text-gray-200 mt-4">Your Referral Link:</label>
+                        <input type="text" id="referral-link" readonly
+                               class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg mt-1 text-sm text-gray-300">
+                        <button id="copy-ref-link-btn" class="w-full mt-2 text-purple-300 text-sm">Copy Link</button>
+                    </div>
+                </div>
+
+                <!-- Column 2: Odds & Predictions -->
+                <div class="md:col-span-2 space-y-6">
+                    <div class="card">
+                        <h3 class="card-title">Game Predictions</h3>
+                        <div id="odds-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <p class="text-gray-400">Loading predictions...</p>
+                        </div>
+                    </div>
+
+                    <!-- Submit Payment -->
+                    <div class="card">
+                        <h3 class="card-title">Make a Payment</h3>
+                        <p class="text-sm text-gray-300 mb-4">Pay to <strong>0786254674</strong> (M-Pesa) and upload proof.</p>
+                        <form id="payment-form">
+                            <select name="type" id="payment-type" class="w-full p-2 bg-gray-700 rounded mb-2">
+                                <option value="Odds">Odds (100 KES)</option>
+                                <option value="Booking">Booking (500 KES)</option>
+                                <option value="LiveSession">Live Session (1000 KES)</option>
+                                <option value="Premium">Premium Plan</option>
+                            </select>
+                            <select name="premiumPlan" id="premium-plan-select" class="w-full p-2 bg-gray-700 rounded mb-2 hidden">
+                                 <!-- Options loaded from API -->
+                            </select>
+                            <input type="number" name="amount" placeholder="Amount (KES)" class="w-full p-2 bg-gray-700 rounded mb-2">
+                            <label class="block text-sm text-gray-300 mb-1">Upload Screenshot:</label>
+                            <input type="file" name="paymentProof" id="payment-proof-file" class="w-full text-sm mb-2">
+                            <p class="text-center text-gray-400 text-sm my-2">OR</p>
+                            <textarea name="paymentText" placeholder="Paste payment text here..." rows="3" class="w-full p-2 bg-gray-700 rounded mb-2"></textarea>
+                            
+                            <button type="submit" class="w-full text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 btn-grad">
+                                Submit for Verification
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Support Button -->
+        <button id="support-btn" class="fixed bottom-5 right-5 bg-purple-600 hover:bg-purple-700 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg text-2xl">
+            ?
+        </button>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- ADMIN PANEL PAGE                                                    -->
+    <!-- =================================================================== -->
+    <div id="admin-page" class="hidden">
+        <!-- Header -->
+        <nav class="bg-gray-800 bg-opacity-70 backdrop-blur-md shadow-lg p-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">🎯 PredictPro [ADMIN]</h1>
+            <div>
+                <span id="admin-email" class="mr-4 text-gray-300"></span>
+                <span id="admin-role" class="mr-4 text-purple-300 font-bold"></span>
+                <span id="assistant-timer" class="mr-4 text-yellow-400 font-bold hidden"></span>
+                <button class="logout-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-all">
+                    Logout
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="container mx-auto p-4 md:p-8">
+            
+            <!-- Tabs -->
+            <div class="mb-6">
+                <div class="border-b border-gray-700">
+                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button class="admin-tab" data-tab="tab-dashboard">Dashboard</button>
+                        <button class="admin-tab" data-tab="tab-payments">💰 Payments</button>
+                        <button class="admin-tab" data-tab="tab-odds">📊 Odds Mgt</button>
+                        <button class="admin-tab" data-tab="tab-users">👥 Users</button>
+                        <button class="admin-tab" data-tab="tab-assistants" id="assistants-tab">🔵 Assistants</button>
+                        <button class="admin-tab" data-tab="tab-support">💬 Support</button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="tab-dashboard">
+                <h2 class="text-2xl font-bold mb-4">Admin Dashboard</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="card"><p>Total Users</p><h3 id="stat-total-users" class="text-3xl font-bold">...</h3></div>
+                    <div class="card"><p>Pending Payments</p><h3 id="stat-pending-payments" class="text-3xl font-bold">...</h3></div>
+                    <div class="card"><p>Active Odds</p><h3 id="stat-active-odds" class="text-3xl font-bold">...</h3></div>
+                </div>
+                 <!-- TODO: Add Chart.js canvases here -->
+            </div>
+
+            <div class="tab-content hidden" id="tab-payments">
+                <h2 class="text-2xl font-bold mb-4">Verify Payments</h2>
+                <div id="pending-payments-container" class="space-y-4">
+                    <p class="text-gray-400">Loading pending payments...</p>
+                </div>
+            </div>
+
+            <div class="tab-content hidden" id="tab-odds">
+                <h2 class="text-2xl font-bold mb-4">Manage Odds</h2>
+                <div class="card">
+                    <h3 class="card-title">Add New Prediction</h3>
+                    <p class="text-gray-400">Odds management form goes here. (TODO)</p>
+                </div>
+            </div>
+
+            <div class="tab-content hidden" id="tab-users">
+                <h2 class="text-2xl font-bold mb-4">Manage Users</h2>
+                <p class="text-gray-400">User management table goes here. (TODO)</p>
+            </div>
+
+            <div class="tab-content hidden" id="tab-assistants">
+                <h2 class="text-2xl font-bold mb-4">Manage Assistants</h2>
+                <div class="card">
+                    <form id="create-assistant-form">
+                        <h3 class="card-title">Create New Assistant</h3>
+                        <input type="email" id="assistant-email" placeholder="Assistant's Email" class="input-field mb-2">
+                        <input type="number" id="assistant-duration" placeholder="Duration (in days)" class="input-field mb-2">
+                        <button type="submit" class="w-full btn-grad">Create Assistant</button>
+                    </form>
+                </div>
+                <div class="mt-6">
+                    <h3 class="text-xl font-bold mb-2">Current Admins</h3>
+                    <div id="admin-list-container" class="space-y-2">
+                        <p class="text-gray-400">Loading admins...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content hidden" id="tab-support">
+                <h2 class="text-2xl font-bold mb-4">Support Tickets</h2>
+                 <p class="text-gray-400">Support ticket system goes here. (TODO)</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 left-5 z-50"></div>
+
+    <!-- 
+      =====================================================================
+      MASTER JAVASCRIPT
+      This one script controls all three "pages"
+      =====================================================================
+    -->
+    <script>
+        // --- CONFIG ---
+        // ----------------
+        // ⚠️ VITAL: Update this to your deployed backend URL (e.g., "https://predictpro.onrender.com")
+        const API_BASE_URL = 'http://localhost:4000'; 
+        // ⚠️ VITAL: Update this to your *frontend* URL for the referral links
+        const APP_BASE_URL = 'https://predictpro.netlify.app'; 
+
+        // --- GLOBAL DOM ELEMENTS ---
+        // -----------------
+        const loginPage = document.getElementById('login-page');
+        const dashboardPage = document.getElementById('dashboard-page');
+        const adminPage = document.getElementById('admin-page');
+
+        // --- UTILITIES ---
+        // -----------------
+
+        /**
+         * Shows a toast notification.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success', 'error', or 'info'.
+         */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type} mb-2`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 4000);
+        }
+
+        /**
+         * Starts a countdown timer.
+         * @param {HTMLElement} element - The DOM element to update.
+         * @param {string} expiryDateISO - The ISO string of the expiry date.
+         */
+        function startCountdown(element, expiryDateISO) {
+            if (!expiryDateISO) {
+                element.textContent = 'N/A';
+                return;
+            }
+
+            const expiryTime = new Date(expiryDateISO).getTime();
+
+            const interval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = expiryTime - now;
+
+                if (distance < 0) {
+                    clearInterval(interval);
+                    element.textContent = 'Expired';
+                    window.location.reload(); // Reload to refresh status
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                element.textContent = `${days}D ${hours}H ${minutes}M ${seconds}S`;
+            }, 1000);
+        }
+
+        /**
+         * Handles user logout.
+         */
+        function handleLogout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            localStorage.removeItem('email');
+            localStorage.removeItem('assistantExpires');
+            
+            // Hide all pages and show the login page
+            adminPage.classList.add('hidden');
+            dashboardPage.classList.add('hidden');
+            loginPage.classList.remove('hidden');
+        }
+
+        /**
+         * API Fetch Wrapper
+         * @param {string} endpoint - The API endpoint (e.g., '/api/auth/request-otp').
+         * @param {string} method - 'GET', 'POST', 'PUT', 'DELETE'.
+         * @param {object} body - The JSON body for POST/PUT requests.
+         * @param {boolean} isFormData - Set to true if body is FormData.
+         * @returns {Promise<object>} - The JSON response data.
+         */
+        async function apiFetch(endpoint, method = 'GET', body = null, isFormData = false) {
+            const token = localStorage.getItem('token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const config = {
+                method,
+                headers,
+            };
+
+            if (body) {
+                if (isFormData) {
+                    config.body = body;
+                } else {
+                    headers['Content-Type'] = 'application/json';
+                    config.body = JSON.stringify(body);
+                }
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    const errorMsg = data.msg || `Error: ${response.status} ${response.statusText}`;
+                    showToast(errorMsg, 'error');
+                    
+                    if (response.status === 401 || data.banned) {
+                        handleLogout(); // Force logout on auth error or ban
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                return data;
+            } catch (err) {
+                console.error('API Fetch Error:', err);
+                throw err;
+            }
+        }
+
+        /**
+         * Shows the correct page based on role.
+         * @param {string} role - The user's role (e.g., 'User', 'SuperAdmin').
+         */
+        function showPageForRole(role) {
+            // Hide all pages
+            loginPage.classList.add('hidden');
+            dashboardPage.classList.add('hidden');
+            adminPage.classList.add('hidden');
+
+            if (role === 'User' || role === 'Banned') {
+                dashboardPage.classList.remove('hidden');
+                initDashboardPage(); // Initialize the dashboard
+            } else if (role === 'SuperAdmin' || role === 'Admin' || role === 'AssistantAdmin') {
+                adminPage.classList.remove('hidden');
+                initAdminPage(); // Initialize the admin panel
+            } else {
+                // Default to login page if role is unknown or no token
+                loginPage.classList.remove('hidden');
+            }
+        }
+
+        // --- PAGE-SPECIFIC LOGIC ---
+        // ---------------------------
+
+        /**
+         * Logic for index.html (Login/Signup Page)
+         */
+        function initLoginPage() {
+            const requestForm = document.getElementById('request-otp-form');
+            const verifyForm = document.getElementById('verify-otp-form');
+            const requestBtn = document.getElementById('request-otp-btn');
+            const verifyBtn = document.getElementById('verify-otp-btn');
+            const resendBtn = document.getElementById('resend-otp-btn');
+            const emailInput = document.getElementById('email');
+            const otpInput = document.getElementById('otp');
+            const emailDisplay = document.getElementById('user-email-display');
+
+            // Get referral code from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('ref');
+
+            // Handle OTP Request
+            requestForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                requestBtn.disabled = true;
+                requestBtn.textContent = 'Sending...';
+
+                try {
+                    const data = await apiFetch('/api/auth/request-otp', 'POST', {
+                        email: emailInput.value,
+                        refCode: refCode,
+                    });
+                    showToast(data.msg, 'success');
+                    requestForm.classList.add('hidden');
+                    verifyForm.classList.remove('hidden');
+                    emailDisplay.textContent = emailInput.value;
+                } catch (err) {
+                    // Error toast is handled by apiFetch
+                } finally {
+                    requestBtn.disabled = false;
+                    requestBtn.textContent = 'Send Login Code';
+                }
+            });
+            
+            // Resend OTP
+            resendBtn.addEventListener('click', () => {
+                requestForm.dispatchEvent(new Event('submit'));
+            });
+
+            // Handle OTP Verification
+            verifyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                verifyBtn.disabled = true;
+                verifyBtn.textContent = 'Verifying...';
+
+                try {
+                    const data = await apiFetch('/api/auth/verify-otp', 'POST', {
+                        email: emailInput.value,
+                        otp: otpInput.value,
+                    });
+
+                    // Store credentials
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('role', data.role);
+                    localStorage.setItem('email', data.email);
+                    if(data.assistantExpires) {
+                        localStorage.setItem('assistantExpires', data.assistantExpires);
+                    }
+
+                    showToast('Login successful!', 'success');
+                    
+                    // Show the correct page
+                    showPageForRole(data.role);
+
+                } catch (err) {
+                    // Handle specific ban error
+                    if (err.message.includes('suspended')) {
+                        // Don't redirect, just show error
+                    }
+                } finally {
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Login / Verify';
+                }
+            });
+        }
+
+        /**
+         * Logic for dashboard.html
+         */
+        async function initDashboardPage() {
+            const userEmail = localStorage.getItem('email');
+            document.getElementById('dash-user-email').textContent = userEmail;
+            
+            try {
+                const data = await apiFetch('/api/user/dashboard');
+                const { user, referrals, transactions, odds } = data;
+
+                // --- 1. Handle Ban Status ---
+                if (user.role === 'Banned' && user.banExpires) {
+                    const banNotification = document.getElementById('ban-notification');
+                    banNotification.classList.remove('hidden');
+                    document.getElementById('ban-reason').textContent = user.banReason;
+                    const banCountdownEl = document.getElementById('ban-countdown');
+                    startCountdown(banCountdownEl, user.banExpires);
+                    document.getElementById('user-status').textContent = 'Banned';
+                    document.getElementById('user-status').classList.replace('text-green-400', 'text-red-500');
+                }
+
+                // --- 2. Handle Premium Status ---
+                document.getElementById('user-role').textContent = user.role;
+                document.getElementById('premium-status').textContent = user.premiumStatus;
+                if (user.premiumStatus !== 'None' && user.premiumExpires) {
+                    document.getElementById('premium-status').classList.replace('text-yellow-400', 'text-green-400');
+                    const premiumNotification = document.getElementById('premium-notification');
+                    premiumNotification.classList.remove('hidden');
+                    document.getElementById('premium-plan-name').textContent = user.premiumStatus;
+                    const premiumCountdownEl = document.getElementById('premium-countdown');
+                    startCountdown(premiumCountdownEl, user.premiumExpires);
+                }
+
+                // --- 3. Handle Referrals ---
+                document.getElementById('referral-points').textContent = user.referralPoints;
+                const refLink = `${APP_BASE_URL}/?ref=${user.referralCode}`;
+                const refLinkInput = document.getElementById('referral-link');
+                refLinkInput.value = refLink;
+                document.getElementById('copy-ref-link-btn').addEventListener('click', () => {
+                    refLinkInput.select();
+                    document.execCommand('copy');
+                    showToast('Referral link copied!', 'success');
+                });
+
+                // --- 4. Load Odds ---
+                const oddsContainer = document.getElementById('odds-container');
+                oddsContainer.innerHTML = ''; // Clear placeholders
+                const categoryIcons = { 'Crash': '🔥', 'Gems': '💎', 'Mines': '💣', 'Aviator': '✈️' };
+                
+                odds.forEach(odd => {
+                    const isDisabled = odd.category === 'Aviator'; // Example disabled logic
+                    oddsContainer.innerHTML += `
+                        <div class="p-4 bg-gray-700 rounded-lg ${isDisabled ? 'opacity-50' : ''}">
+                            <h4 class="text-lg font-bold">${categoryIcons[odd.category] || '🎯'} ${odd.title}</h4>
+                            <p class="text-sm text-gray-300">${odd.content.substring(0, 50)}...</p>
+                            <button class="mt-2 text-sm ${isDisabled ? 'text-gray-500' : 'text-green-400'} font-bold" ${isDisabled ? 'disabled' : ''}>
+                                ${isDisabled ? 'Locked' : `Get Odds (${odd.oddsValue} KES)`}
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                // --- 5. Handle Payment Form ---
+                const paymentForm = document.getElementById('payment-form');
+                const paymentTypeSelect = document.getElementById('payment-type');
+                const premiumPlanSelect = document.getElementById('premium-plan-select');
+                
+                // Load premium plans into select
+                const plans = await apiFetch('/api/premium/plans');
+                premiumPlanSelect.innerHTML = ''; // Clear
+                plans.forEach(plan => {
+                    premiumPlanSelect.innerHTML += `<option value="${plan.name}">${plan.name} (${plan.price} KES)</option>`;
+                });
+                
+                paymentTypeSelect.addEventListener('change', (e) => {
+                    if (e.target.value === 'Premium') {
+                        premiumPlanSelect.classList.remove('hidden');
+                    } else {
+                        premiumPlanSelect.classList.add('hidden');
+                    }
+                });
+
+                paymentForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(paymentForm);
+                    
+                    try {
+                        const data = await apiFetch('/api/payment/submit', 'POST', formData, true);
+                        showToast(data.msg, 'success');
+                        paymentForm.reset();
+                    } catch (err) {
+                        // Error shown by apiFetch
+                    }
+                });
+                
+                // --- 6. TODO: Support Button ---
+                document.getElementById('support-btn').addEventListener('click', () => {
+                    showToast('Support system coming soon!', 'info');
+                    // TODO: Implement html2canvas screenshot and modal
+                });
+
+            } catch (err) {
+                console.error('Failed to load dashboard data:', err);
+            }
+        }
+
+        /**
+         * Logic for admin.html
+         */
+        async function initAdminPage() {
+            const userEmail = localStorage.getItem('email');
+            const userRole = localStorage.getItem('role');
+            
+            document.getElementById('admin-email').textContent = userEmail;
+            document.getElementById('admin-role').textContent = userRole;
+
+            // --- 1. Role-based UI ---
+            if (userRole === 'AssistantAdmin') {
+                // Hide super admin tabs
+                document.getElementById('assistants-tab').style.display = 'none';
+                document.getElementById('tab-assistants').style.display = 'none';
+                // Show and start expiry timer
+                const assistantTimerEl = document.getElementById('assistant-timer');
+                const expiry = localStorage.getItem('assistantExpires');
+                if(expiry) {
+                    assistantTimerEl.classList.remove('hidden');
+                    startCountdown(assistantTimerEl, expiry);
+                }
+            }
+            
+            if(userRole === 'Admin') {
+                // Hide super admin tabs
+                document.getElementById('assistants-tab').style.display = 'none';
+                document.getElementById('tab-assistants').style.display = 'none';
+            }
+            
+            // --- 2. Tabbed Navigation ---
+            const tabs = document.querySelectorAll('.admin-tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs[0].classList.add('active'); // Activate first tab by default
+            document.getElementById('tab-dashboard').classList.remove('hidden');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Deactivate all
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.add('hidden'));
+                    
+                    // Activate clicked
+                    tab.classList.add('active');
+                    document.getElementById(tab.dataset.tab).classList.remove('hidden');
+                });
+            });
+            
+            // --- 3. Load Data ---
+            try {
+                // Load Dashboard Summary
+                const summary = await apiFetch('/api/admin/summary');
+                document.getElementById('stat-total-users').textContent = summary.users;
+                document.getElementById('stat-pending-payments').textContent = summary.pendingTransactions;
+                document.getElementById('stat-active-odds').textContent = summary.totalOdds;
+                
+                // Load Admins list (for SuperAdmin)
+                if (userRole === 'SuperAdmin') {
+                    const adminContainer = document.getElementById('admin-list-container');
+                    adminContainer.innerHTML = '';
+                    summary.admins.forEach(admin => {
+                        adminContainer.innerHTML += `
+                            <div class="card flex justify-between items-center text-sm">
+                                <div>
+                                    <p class="font-bold">${admin.email}</p>
+                                    <p class="text-purple-300">${admin.role}</p>
+                                </div>
+                                <p class="text-gray-400">${admin.assistantExpires ? 'Expires: ' + new Date(admin.assistantExpires).toLocaleDateString() : ''}</p>
+                            </div>
+                        `;
+                    });
+                }
+                
+                // Load Pending Payments
+                const payments = await apiFetch('/api/admin/payments');
+                const paymentsContainer = document.getElementById('pending-payments-container');
+                paymentsContainer.innerHTML = '';
+                if (payments.length === 0) {
+                    paymentsContainer.innerHTML = '<p class="text-gray-400">No pending payments.</p>';
+                }
+                
+                payments.forEach(tx => {
+                    const proofLink = tx.proof.startsWith('/uploads') ? 
+                        `<a href="${API_BASE_URL}${tx.proof}" target="_blank" class="text-blue-400 hover:underline">View Screenshot</a>` :
+                        `<p class="text-gray-300 font-mono">${tx.proof}</p>`;
+                    
+                    paymentsContainer.innerHTML += `
+                        <div class="card" data-tx-id="${tx._id}">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-bold text-lg">${tx.type} - ${tx.amount} KES</p>
+                                    <p class="text-sm text-gray-400">User: ${tx.user.email}</p>
+                                    <p class="text-sm text-gray-400">Date: ${new Date(tx.createdAt).toLocaleString()}</p>
+                                    ${tx.type === 'Premium' ? `<p class="text-yellow-300">Plan: ${tx.premiumPlan}</p>` : ''}
+                                </div>
+                                <div class="text-right">
+                                    ${proofLink}
+                                </div>
+                            </div>
+                            <div class="mt-4 flex space-x-2">
+                                <button class="btn-verify bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-sm" data-id="${tx._id}" data-status="Approved">Approve</button>
+                                <button class="btn-verify bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded text-sm" data-id="${tx._id}" data-status="Rejected">Reject</button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+            } catch(err) {
+                console.error('Failed to load admin data', err);
+            }
+            
+            // --- 4. Event Handlers ---
+            
+            // Handle Payment Verification
+            document.getElementById('pending-payments-container').addEventListener('click', async (e) => {
+                if (!e.target.classList.contains('btn-verify')) return;
+                
+                const btn = e.target;
+                const id = btn.dataset.id;
+                const status = btn.dataset.status;
+                let notes = '';
+                
+                if (status === 'Rejected') {
+                    notes = prompt('Reason for rejection (optional):');
+                }
+                
+                btn.disabled = true;
+                btn.textContent = '...';
+                
+                try {
+                    await apiFetch(`/api/admin/verify-payment/${id}`, 'POST', { status, adminNotes: notes });
+                    showToast(`Payment ${status.toLowerCase()}!`, 'success');
+                    document.querySelector(`[data-tx-id="${id}"]`).remove(); // Remove card from UI
+                } catch (err) {
+                    btn.disabled = false;
+                    btn.textContent = status;
+                }
+            });
+
+            // Handle Create Assistant
+            if (userRole === 'SuperAdmin') {
+                document.getElementById('create-assistant-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('assistant-email').value;
+                    const durationDays = document.getElementById('assistant-duration').value;
+                    
+                    try {
+                        await apiFetch('/api/admin/create-assistant', 'POST', { email, durationDays });
+                        showToast('Assistant admin created!', 'success');
+                        // Simple refresh to update admin list
+                        initAdminPage(); 
+                    } catch(err) {
+                        // error shown by apiFetch
+                    }
+                });
+            }
+        }
+
+
+        // --- MASTER ROUTER / INITIALIZATION ---
+        // ------------------------------------
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add logout handlers
+            document.querySelectorAll('.logout-btn').forEach(btn => {
+                btn.addEventListener('click', handleLogout);
+            });
+            
+            // Initialize login page functions
+            initLoginPage();
+
+            // Check auth and show the correct page
+            const token = localStorage.getItem('token');
+            const role = localStorage.getItem('role');
+
+            if (token && role) {
+                showPageForRole(role);
+            } else {
+                showPageForRole(null); // Show login page
+            }
+        });
+    </script>
+</body>
+</html>
